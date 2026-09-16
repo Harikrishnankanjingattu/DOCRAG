@@ -36,6 +36,8 @@ rag_engine = RAGEngine()
 # Base paths
 BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = BASE_DIR / "frontend"
+if not FRONTEND_DIR.exists():
+    FRONTEND_DIR = Path.cwd() / "frontend"
 
 
 class QueryRequest(BaseModel):

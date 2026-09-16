@@ -1,0 +1,17 @@
+[project]
+name = "documentrag"
+version = "1.0.0"
+description = "Document RAG Studio with Live Pipeline Demonstration and Minimalist UI"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "pypdf>=5.0.0",
+    "numpy>=2.0.0",
+    "httpx>=0.28.0",
+    "python-multipart>=0.0.20",
+    "pydantic>=2.10.0",
+    "python-dotenv>=1.0.0"
+]
+
+[tool.vercel]
+entrypoint = "backend.main:app"
