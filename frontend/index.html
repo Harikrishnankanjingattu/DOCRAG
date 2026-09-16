@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document RAG Studio — Live Pipeline & Vector Similarity Visualizer</title>
+  <meta name="description" content="A functional Document RAG demonstration featuring live chunking, vector embedding generation, real-time cosine similarity ranking, and an interactive chatbot.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-white text-black font-sans antialiased">
+
+  <!-- Header -->
+  <header class="border-b border-zinc-200 sticky top-0 bg-white/90 backdrop-blur z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-8 h-8 bg-black text-white flex items-center justify-center font-mono font-bold text-xs rounded-sm tracking-tighter">
+          RAG
+        </div>
+        <div>
+          <h1 class="text-sm font-bold tracking-tight text-zinc-900 leading-none">DOCUMENT RAG STUDIO</h1>
+          <p class="text-[11px] text-zinc-500 font-mono mt-0.5">Live Chunking • Embeddings • Vector Math • Grounded Chat</p>
+        </div>
+      </div>
+
+      <!-- Active Doc Status & Actions -->
+      <div class="flex items-center space-x-2">
+        <div id="activeDocBadge" class="hidden sm:flex items-center space-x-2 px-2.5 py-1 rounded-full border border-zinc-200 text-xs font-mono text-zinc-600 bg-zinc-50">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="activeDocName" class="truncate max-w-[180px]">No document loaded</span>
+        </div>
+
+        <button id="btnOpenSettings" class="px-3 py-1.5 border border-zinc-300 hover:border-black text-xs font-medium rounded transition flex items-center space-x-1.5 bg-white">
+          <svg class="w-3.5 h-3.5 text-zinc-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+          <span>Pipeline Config</span>
+        </button>
+
+        <button id="btnResetDoc" class="hidden px-3 py-1.5 bg-black hover:bg-zinc-800 text-white text-xs font-medium rounded transition flex items-center space-x-1">
+          <span>+ New Document</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- STAGE 1: INGESTION & UPLOAD VIEW (Default if no doc loaded) -->
+    <section id="uploadSection" class="transition-all duration-300">
+      <div class="border border-zinc-200 rounded-lg p-6 sm:p-8 bg-white shadow-xs">
+        <div class="max-w-2xl mx-auto text-center mb-8">
+          <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-zinc-100 text-zinc-800 border border-zinc-200 mb-3">
+            STAGE 1 • DOCUMENT INGESTION
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-950">
+            Upload a Document to Inspect RAG Internals
+          </h2>
+          <p class="text-zinc-600 text-sm mt-2">
+            Experience the step-by-step pipeline: document parsing, sentence-aware chunking, dense vector embeddings, vector store indexing, and interactive similarity retrieval.
+          </p>
+        </div>
+
+        <!-- Dropzone -->
+        <div id="dropZone" class="max-w-2xl mx-auto border-2 border-dashed border-zinc-300 hover:border-black rounded-lg p-8 text-center cursor-pointer transition bg-zinc-50/50 hover:bg-zinc-50">
+          <input type="file" id="fileInput" class="hidden" accept=".pdf,.txt,.md,.docx,.csv">
+          <div class="flex flex-col items-center justify-center space-y-3">
+            <div class="w-12 h-12 rounded-full bg-white border border-zinc-200 flex items-center justify-center shadow-xs">
+              <svg class="w-6 h-6 text-zinc-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-zinc-900">
+                Click to browse or drop your document here
+              </p>
+              <p class="text-xs text-zinc-500 mt-1 font-mono">
+                Supported: PDF, TXT, Markdown (.md), DOCX, CSV
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chunking Parameters preview -->
+        <div class="max-w-2xl mx-auto mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6 border-t border-zinc-100 text-xs">
+          <div>
+            <div class="flex justify-between font-mono text-zinc-600 mb-1">
+              <span>Chunk Size (chars):</span>
+              <span id="chunkSizeDisplay" class="font-bold text-black">400</span>
+            </div>
+            <input type="range" id="chunkSizeSlider" min="150" max="1000" step="50" value="400" class="w-full accent-black cursor-pointer">
+            <p class="text-[11px] text-zinc-400 mt-1">Target characters per text chunk</p>
+          </div>
+          <div>
+            <div class="flex justify-between font-mono text-zinc-600 mb-1">
+              <span>Chunk Overlap (chars):</span>
+              <span id="chunkOverlapDisplay" class="font-bold text-black">80</span>
+            </div>
+            <input type="range" id="chunkOverlapSlider" min="0" max="250" step="10" value="80" class="w-full accent-black cursor-pointer">
+            <p class="text-[11px] text-zinc-400 mt-1">Preserves context across chunk boundaries</p>
+          </div>
+        </div>
+
+        <!-- Ingestion Status Progress -->
+        <div id="ingestProgress" class="hidden max-w-2xl mx-auto mt-6 p-4 border border-zinc-200 bg-zinc-50 rounded-lg">
+          <div class="flex items-center space-x-3">
+            <div class="spinner w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+            <span id="ingestStatusText" class="text-xs font-mono text-zinc-700">Ingesting document and computing dense embeddings...</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAGE 2: PIPELINE DEMONSTRATION & VECTOR EXPLORER -->
+    <section id="pipelineSection" class="hidden space-y-4">
+      <!-- Section Tab Header -->
+      <div class="border border-zinc-200 rounded-lg p-4 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div class="flex items-center space-x-3">
+          <div class="w-2.5 h-2.5 bg-black rounded-full"></div>
+          <div>
+            <span class="text-xs font-mono text-zinc-500 uppercase">RAG INGESTION PIPELINE DEMO</span>
+            <h2 id="pipelineDocTitle" class="text-base font-bold text-zinc-900 leading-tight">Document Summary</h2>
+          </div>
+        </div>
+
+        <!-- Stats Chips -->
+        <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+          <div class="px-2.5 py-1 bg-zinc-100 border border-zinc-200 rounded">
+            <span class="text-zinc-500">Words:</span> <strong id="statWords" class="text-black">0</strong>
+          </div>
+          <div class="px-2.5 py-1 bg-zinc-100 border border-zinc-200 rounded">
+            <span class="text-zinc-500">Chunks:</span> <strong id="statChunks" class="text-black">0</strong>
+          </div>
+          <div class="px-2.5 py-1 bg-zinc-100 border border-zinc-200 rounded">
+            <span class="text-zinc-500">Vector Dim:</span> <strong id="statDim" class="text-black">128-D</strong>
+          </div>
+          <div class="px-2.5 py-1 bg-zinc-100 border border-zinc-200 rounded">
+            <span class="text-zinc-500">Model:</span> <strong id="statModel" class="text-black">Dense Vectorizer</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Demonstration Steps Accordion / Tabs -->
+      <div class="border border-zinc-200 rounded-lg bg-white overflow-hidden shadow-xs">
+        <div class="border-b border-zinc-200 px-4 flex items-center justify-between bg-zinc-50/70">
+          <div class="flex space-x-1 text-xs font-medium" id="pipelineTabs">
+            <button data-tab="tabChunks" class="tab-btn active px-4 py-3 border-b-2 border-black font-semibold text-black">
+              1. Chunking Breakdown (<span id="tabChunksCount">0</span>)
+            </button>
+            <button data-tab="tabEmbeddings" class="tab-btn px-4 py-3 border-b-2 border-transparent text-zinc-500 hover:text-black">
+              2. Vector Embeddings Preview
+            </button>
+            <button data-tab="tabDatabase" class="tab-btn px-4 py-3 border-b-2 border-transparent text-zinc-500 hover:text-black">
+              3. Vector Database Table
+            </button>
+          </div>
+
+          <button id="btnTogglePipelineCollapse" class="text-xs font-mono text-zinc-500 hover:text-black py-2 px-1">
+            [ Collapse Details ]
+          </button>
+        </div>
+
+        <div id="pipelineTabContent" class="p-5">
+          <!-- Tab 1: Chunk Cards -->
+          <div id="tabChunks" class="tab-pane active space-y-4">
+            <div class="flex items-center justify-between text-xs text-zinc-500 font-mono">
+              <span>Text segmented with boundary preservation and overlap highlighting:</span>
+              <span class="flex items-center space-x-2">
+                <span class="inline-block w-3 h-3 bg-zinc-200 rounded border border-zinc-400"></span>
+                <span>= Overlapping boundary</span>
+              </span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="chunksCardGrid">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <!-- Tab 2: Vector Embeddings Preview -->
+          <div id="tabEmbeddings" class="tab-pane hidden space-y-4">
+            <div class="text-xs text-zinc-600">
+              Each chunk is projected into a normalized dense vector space where semantic cosine distance equals dot product:
+              <code class="font-mono text-xs bg-zinc-100 px-1.5 py-0.5 rounded border border-zinc-200 ml-1">cos(θ) = u • v / (||u|| ||v||)</code>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="embeddingsPreviewGrid">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <!-- Tab 3: Vector Database Table -->
+          <div id="tabDatabase" class="tab-pane hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-zinc-100 border-b border-zinc-200 text-zinc-600 uppercase text-[11px]">
+                  <tr>
+                    <th class="p-2.5">ID</th>
+                    <th class="p-2.5">Char Range</th>
+                    <th class="p-2.5">Tokens</th>
+                    <th class="p-2.5">L2 Norm</th>
+                    <th class="p-2.5">Vector Preview (First 8 floats)</th>
+                    <th class="p-2.5">Text Sample</th>
+                  </tr>
+                </thead>
+                <tbody id="vectorTableBody" class="divide-y divide-zinc-100">
+                  <!-- Rendered by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAGE 3: INTERACTIVE CHATBOT & LIVE VECTOR SIMILARITY COMPARISON -->
+    <section id="chatAndCompareSection" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- LEFT: CHATBOT INTERFACE (7 cols) -->
+      <div class="lg:col-span-7 flex flex-col border border-zinc-200 rounded-lg bg-white shadow-xs h-[640px] overflow-hidden">
+        <!-- Chat Header -->
+        <div class="p-4 border-b border-zinc-200 bg-zinc-50 flex items-center justify-between">
+          <div class="flex items-center space-x-2.5">
+            <div class="w-2.5 h-2.5 bg-black rounded-full"></div>
+            <div>
+              <h3 class="text-xs font-bold font-mono uppercase tracking-wider text-zinc-900">Document Chatbot</h3>
+              <p class="text-[11px] text-zinc-500">Ask anything about the ingested document</p>
+            </div>
+          </div>
+
+          <button id="btnClearChat" class="text-[11px] font-mono text-zinc-500 hover:text-black border border-zinc-200 px-2 py-1 rounded bg-white">
+            Clear Chat
+          </button>
+        </div>
+
+        <!-- Sample Questions Quick Chips -->
+        <div class="px-4 py-2 bg-zinc-100/70 border-b border-zinc-200 flex items-center space-x-2 overflow-x-auto text-[11px] font-mono">
+          <span class="text-zinc-500 whitespace-nowrap">Try:</span>
+          <div id="samplePromptsList" class="flex items-center space-x-2">
+            <!-- Rendered by JS based on doc -->
+          </div>
+        </div>
+
+        <!-- Messages Thread -->
+        <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-4">
+          <!-- Initial welcome -->
+          <div class="flex items-start space-x-3">
+            <div class="w-6 h-6 rounded bg-black text-white flex items-center justify-center font-mono text-[10px] shrink-0 font-bold">
+              AI
+            </div>
+            <div class="bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-xs leading-relaxed max-w-[88%]">
+              <p class="font-semibold text-zinc-900 mb-1">Document Indexing Complete</p>
+              <p class="text-zinc-700">
+                I have processed the document into vectors. Type a question below, and watch the panel on the right display real-time <strong>Query Vectorization</strong> and <strong>Vector DB Cosine Similarity Ranking</strong> across all indexed chunks!
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Input Bar -->
+        <form id="chatForm" class="p-3 border-t border-zinc-200 bg-white flex items-center space-x-2">
+          <input 
+            type="text" 
+            id="chatInput" 
+            placeholder="Ask a question about the document..." 
+            class="flex-1 text-xs border border-zinc-200 focus:border-black rounded px-3 py-2.5 outline-none transition"
+            autocomplete="off"
+          >
+          <button 
+            type="submit" 
+            id="btnSendMessage" 
+            class="bg-black hover:bg-zinc-800 text-white px-4 py-2.5 rounded text-xs font-semibold tracking-wide transition flex items-center space-x-1.5"
+          >
+            <span>Ask</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+            </svg>
+          </button>
+        </form>
+      </div>
+
+      <!-- RIGHT: LIVE VECTOR COMPARISON & RETRIEVAL INSPECTOR (5 cols) -->
+      <div class="lg:col-span-5 flex flex-col border border-zinc-200 rounded-lg bg-white shadow-xs h-[640px] overflow-hidden">
+        <!-- Inspector Header -->
+        <div class="p-4 border-b border-zinc-200 bg-zinc-50 flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <svg class="w-4 h-4 text-zinc-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            <div>
+              <h3 class="text-xs font-bold font-mono uppercase tracking-wider text-zinc-900">Vector Similarity Ranking</h3>
+              <p class="text-[11px] text-zinc-500">Live Cosine Distance Comparison against DB</p>
+            </div>
+          </div>
+          <span id="compareStatusBadge" class="text-[10px] font-mono px-2 py-0.5 rounded border border-zinc-300 bg-white text-zinc-600">
+            Awaiting query
+          </span>
+        </div>
+
+        <!-- Query Vector Preview Strip -->
+        <div id="queryVectorStrip" class="hidden px-4 py-2.5 bg-zinc-100/70 border-b border-zinc-200 text-xs font-mono">
+          <div class="flex items-center justify-between text-[11px] text-zinc-500 mb-1">
+            <span>Query Vector Representation:</span>
+            <span id="queryDimBadge" class="font-bold text-black">128-D Unit Sphere</span>
+          </div>
+          <div id="queryVectorFloats" class="text-[11px] text-zinc-700 truncate font-mono bg-white p-1.5 rounded border border-zinc-200">
+            [0.0000, ...]
+          </div>
+        </div>
+
+        <!-- Comparison List -->
+        <div id="comparisonsContainer" class="flex-1 overflow-y-auto p-4 space-y-2.5">
+          <!-- Placeholder state -->
+          <div id="comparisonEmptyState" class="h-full flex flex-col items-center justify-center text-center p-6 text-zinc-400">
+            <svg class="w-10 h-10 mb-2 stroke-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+            </svg>
+            <p class="text-xs font-mono font-medium text-zinc-600">No Query Executed Yet</p>
+            <p class="text-[11px] text-zinc-400 mt-1 max-w-xs">
+              Submit a question in the chat to see real-time cosine similarity scores for all document chunks in the database.
+            </p>
+          </div>
+
+          <!-- Comparison items list (rendered by JS) -->
+          <div id="comparisonList" class="hidden space-y-2">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+
+        <!-- Math Footer -->
+        <div class="p-3 border-t border-zinc-200 bg-zinc-50 text-[11px] font-mono text-zinc-500 flex items-center justify-between">
+          <span>Ranking Metric: Cosine Similarity</span>
+          <span class="text-black font-semibold">cos(θ) = (q · c) / (||q|| ||c||)</span>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- PIPELINE SETTINGS MODAL -->
+  <div id="settingsModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white border border-zinc-300 rounded-lg max-w-md w-full p-6 shadow-xl space-y-5">
+      <div class="flex items-center justify-between border-b border-zinc-200 pb-3">
+        <h3 class="font-bold text-sm text-zinc-950 font-mono uppercase">Pipeline Configuration</h3>
+        <button id="btnCloseSettings" class="text-zinc-400 hover:text-black text-lg leading-none">&times;</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="block font-medium text-zinc-800 mb-1">Top-K Chunks to Retrieve:</label>
+          <div class="flex items-center space-x-3">
+            <input type="range" id="topKSlider" min="1" max="6" value="3" class="flex-1 accent-black cursor-pointer">
+            <span id="topKDisplay" class="font-mono font-bold w-6 text-right">3</span>
+          </div>
+          <p class="text-[11px] text-zinc-500 mt-1">Number of highest-similarity chunks passed as context.</p>
+        </div>
+
+        <div class="pt-3 border-t border-zinc-100">
+          <label class="block font-medium text-zinc-800 mb-1">Embedding & Generation Engine:</label>
+          <select id="providerSelect" class="w-full border border-zinc-200 rounded px-2.5 py-1.5 bg-white text-xs outline-none">
+            <option value="local">Local Dense Vectorizer & Offline Synthesis (Zero API Key Needed)</option>
+            <option value="gemini">Google Gemini (gemini-1.5-flash & text-embedding-004)</option>
+            <option value="openai">OpenAI (gpt-4o-mini & text-embedding-3-small)</option>
+          </select>
+        </div>
+
+        <div id="apiKeyField" class="hidden">
+          <label class="block font-medium text-zinc-800 mb-1" id="apiKeyLabel">API Key:</label>
+          <input type="password" id="apiKeyInput" placeholder="Enter API key..." class="w-full border border-zinc-200 rounded px-3 py-1.5 text-xs outline-none font-mono">
+          <p class="text-[11px] text-zinc-400 mt-1">Key is only stored in your browser session.</p>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2 border-t border-zinc-200">
+        <button id="btnSaveSettings" class="bg-black hover:bg-zinc-800 text-white text-xs font-semibold px-4 py-2 rounded transition">
+          Save Settings
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHUNK PREVIEW DETAIL MODAL -->
+  <div id="chunkDetailModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white border border-zinc-300 rounded-lg max-w-xl w-full p-6 shadow-xl space-y-4 max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-zinc-200 pb-3">
+        <div class="flex items-center space-x-2">
+          <span id="modalChunkBadge" class="bg-black text-white font-mono text-xs px-2 py-0.5 rounded font-bold">Chunk #0</span>
+          <span id="modalChunkMeta" class="text-xs text-zinc-500 font-mono">Tokens: 85 | Range: 0-388</span>
+        </div>
+        <button id="btnCloseChunkModal" class="text-zinc-400 hover:text-black text-lg leading-none">&times;</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto space-y-4 text-xs">
+        <div>
+          <h4 class="font-mono font-bold text-zinc-700 uppercase text-[11px] mb-1">Full Chunk Text Content:</h4>
+          <div id="modalChunkText" class="p-3 bg-zinc-50 border border-zinc-200 rounded leading-relaxed text-zinc-800 font-sans whitespace-pre-wrap"></div>
+        </div>
+
+        <div>
+          <h4 class="font-mono font-bold text-zinc-700 uppercase text-[11px] mb-1">Vector Embedding Representation (128-D Unit Space):</h4>
+          <div id="modalVectorFloats" class="p-2.5 bg-zinc-100 border border-zinc-200 rounded font-mono text-[11px] text-zinc-700 max-h-36 overflow-y-auto"></div>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-zinc-200">
+        <button id="btnCloseChunkModalBtn" class="border border-zinc-300 hover:border-black text-xs px-4 py-1.5 rounded font-medium">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
